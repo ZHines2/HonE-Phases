@@ -1,0 +1,207 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>BLACK / WHITE – Advantage Game</title>
+  <style>
+    body  { background:#111; color:#eee; font-family:monospace; text-align:center; padding:40px; transition: 0.2s; }
+    button{ font-size:1.3em; margin:8px; padding:8px 22px; cursor:pointer; }
+    #log  { margin-top:20px; height:160px; overflow-y:auto; background:#222;
+            padding:8px; border:1px solid #555; text-align:left; }
+    .score{ margin-top:16px; font-size:1.2em; }
+    #rope { letter-spacing:1px; margin-top:10px; }
+    #stats{ margin-top:22px; color:#bbb; font-size:1em; }
+    .shake1 { animation: shake1 0.2s; }
+    .shake2 { animation: shake2 0.28s; }
+    .shake3 { animation: shake3 0.4s; }
+    @keyframes shake1 {
+      0% {transform: translateX(0);}
+      25%{transform: translateX(-8px);}
+      50%{transform: translateX(8px);}
+      75%{transform: translateX(-4px);}
+      100%{transform: translateX(0);}
+    }
+    @keyframes shake2 {
+      0% {transform: translateX(0);}
+      10%{transform: translateX(-14px);}
+      30%{transform: translateX(14px);}
+      50%{transform: translateX(-10px);}
+      70%{transform: translateX(10px);}
+      90%{transform: translateX(-6px);}
+      100%{transform: translateX(0);}
+    }
+    @keyframes shake3 {
+      0% {transform: translateX(0);}
+      8%{transform: translateX(-22px);}
+      20%{transform: translateX(22px);}
+      34%{transform: translateX(-20px);}
+      47%{transform: translateX(20px);}
+      65%{transform: translateX(-14px);}
+      78%{transform: translateX(14px);}
+      100%{transform: translateX(0);}
+    }
+    #achievementsModal {
+      display:none; position:fixed; left:0; top:0; width:100vw; height:100vh;
+      background:rgba(20,20,20,0.94); color:#fff; z-index:10; 
+      text-align:center; font-size:1.3em; padding-top:6vh;
+    }
+    #achievementsContent {
+      display:inline-block; background:#222; padding:32px 48px; border-radius:18px;
+      box-shadow:0 0 40px #000; text-align:left; font-size:1.1em;
+    }
+    #achievementsContent h2 { margin-top:0; }
+    #achievementsList div { margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <h1>🂠 BLACK / WHITE</h1>
+  <p>
+    <button onclick="play('B')">🖤 BLACK</button>
+    <button onclick="play('W')">🤍 WHITE</button>
+  </p>
+  <div class="score" id="adv"></div>
+  <div id="rope"></div>
+  <div id="log"></div>
+  <div id="stats"></div>
+  <div id="achievementsModal">
+    <div id="achievementsContent">
+      <h2>Achievements</h2>
+      <div id="achievementsList"></div>
+      <br>
+      <div style="text-align:center; opacity:0.7; font-size:0.96em;">Press S or click here to close.</div>
+    </div>
+  </div>
+<script>
+let you=0, foe=0, over=false;
+let xCount = 0, xTimeout = null;
+const log = t => logBox.innerHTML = `<p>> ${t}</p>` + logBox.innerHTML;
+const name = c => c==='B'?'BLACK':'WHITE';
+const ai = () => (Math.random()<0.5 ? 'B':'W');
+const logBox=document.getElementById('log');
+const advBox=document.getElementById('adv');
+const rope=document.getElementById('rope');
+const statsBox=document.getElementById('stats');
+const body = document.body;
+
+// persistent stats
+const STATS_KEY = "bw_adv_stats";
+function getStats() {
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(STATS_KEY))||{}; } catch(e){ s={}; }
+  return Object.assign({wins:0,losses:0,games:0}, s);
+}
+function saveStats(s) { localStorage.setItem(STATS_KEY, JSON.stringify(s)); }
+function showStats(msg){
+  const s = getStats();
+  statsBox.innerText = `WINS: ${s.wins}   LOSSES: ${s.losses}   GAMES: ${s.games}   [Press 'R' to restart, tap 'X' 3× to erase stats, S=Achievements, Left⇧=BLACK, Right⇧=WHITE]`
+    + (msg ? `\n${msg}` : '');
+}
+
+// Achievements logic
+function getAchievements(){
+  const s = getStats();
+  return [
+    {label:"First Win",      unlocked: s.wins > 0},
+    {label:"First Loss",     unlocked: s.losses > 0},
+    {label:"5 Games Played", unlocked: s.games >= 5},
+    {label:"10 Wins",        unlocked: s.wins >= 10},
+    {label:"Win/Loss > 2",   unlocked: (s.wins>0 && s.losses>0 && s.wins/s.losses > 2)},
+    {label:"20 Games Played",unlocked: s.games >= 20},
+    // Add more as desired
+  ];
+}
+function showAchievementsModal(show){
+  const modal = document.getElementById('achievementsModal');
+  if(show){
+    // build content
+    const ach = getAchievements();
+    document.getElementById('achievementsList').innerHTML =
+      ach.map(a=>`${a.unlocked?"✅":"⬜"} ${a.label}`).join('<br>');
+    modal.style.display = "block";
+  }else{
+    modal.style.display = "none";
+  }
+}
+
+// main game loop
+function update(msg){
+  const adv=you-foe;
+  advBox.innerText = `Advantage: ${adv>0 ? '+'+adv : adv}`;
+  const index=adv+3;
+  const cells=['-3','-2','-1','0','1','2','3'].map((v,i)=>
+    i===index ? '▲' : '·');
+  rope.innerText = cells.join(' ');
+  showStats(msg);
+}
+function play(me){
+  if(over) return;
+  const opp=ai();
+  log(`You ➜ ${name(me)}   |   Enemy ➜ ${name(opp)}`);
+  if(me==='B'&&opp==='B'){you++;foe++;log('Both gain 1.');}
+  else if(me==='B'&&opp==='W'){foe++;log('Enemy steals.');}
+  else if(me==='W'&&opp==='B'){you++;log('You steal.');}
+  else{you--;foe--;log('Stalemate – both lose 1.');}
+  update();
+  if(Math.abs(you-foe)>=3) end();
+}
+function end(){
+  const win = you > foe;
+  log(win?'🎉 YOU WIN!':'💀 YOU LOSE.');
+  document.querySelectorAll('button').forEach(b=>b.disabled=true);
+  over=true;
+  // stats
+  let s = getStats();
+  win ? s.wins++ : s.losses++;
+  s.games++;
+  saveStats(s);
+  showStats();
+}
+function resetGame(){
+  you=0; foe=0; over=false;
+  logBox.innerHTML = '';
+  document.querySelectorAll('button').forEach(b=>b.disabled=false);
+  update();
+}
+
+// hotkeys: r=reset, x=erase stats after 3, LeftShift=BLACK, RightShift=WHITE, s=achievements
+window.addEventListener('keydown', e=>{
+  if(e.key==='r'||e.key==='R'){ xCount=0; resetGame(); showAchievementsModal(false);}
+  else if(e.key==='x'||e.key==='X'){
+    xCount++;
+    if(xTimeout) clearTimeout(xTimeout);
+    body.classList.remove('shake1','shake2','shake3');
+    void body.offsetWidth;
+    if(xCount===1){
+      body.classList.add('shake1');
+      update("Press X two more times to erase stats!");
+    } else if(xCount===2){
+      body.classList.add('shake2');
+      update("One more X to erase everything!");
+    } else if(xCount===3){
+      body.classList.add('shake3');
+      localStorage.removeItem(STATS_KEY);
+      update("All stats erased!");
+      showAchievementsModal(false);
+      setTimeout(()=>update(), 1100);
+      xCount=0;
+    }
+    xTimeout = setTimeout(()=>{ xCount=0; body.classList.remove('shake1','shake2','shake3'); update(); }, 2000);
+  }
+  // --- SHIFT keys: Left=BLACK, Right=WHITE ---
+  else if(e.code==='ShiftLeft'){ xCount=0; play('B'); showAchievementsModal(false);}
+  else if(e.code==='ShiftRight'){ xCount=0; play('W'); showAchievementsModal(false);}
+  // --- S: toggle achievements modal ---
+  else if(e.key==='s'||e.key==='S'){
+    const modal = document.getElementById('achievementsModal');
+    showAchievementsModal(modal.style.display === "none");
+  }
+  else { xCount=0; body.classList.remove('shake1','shake2','shake3'); }
+});
+// Close achievements modal on click
+document.getElementById('achievementsModal').addEventListener('click', ()=>showAchievementsModal(false));
+
+// init
+update();
+</script>
+</body>
+</html>
