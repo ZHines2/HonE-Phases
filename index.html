@@ -119,7 +119,7 @@ let you=0, foe=0, over=false, heat=1, xCount = 0, xTimeout = null;
 let playerHistory = [];
 let aiHistory = [];
 let depth = 1; // Depth starts shallow
-const MAX_DEPTH = 8;
+const MAX_DEPTH = 20;
 const logBox=document.getElementById('log');
 const advBox=document.getElementById('adv');
 const rope=document.getElementById('rope');
@@ -180,6 +180,7 @@ function incHeat() { setHeat(heat+1); }
 function resetHeat() { setHeat(1); }
 
 // --- DEPTH SYSTEM --- //
+// Incremental, "creeping" depth, steepens at high heat
 function getStreak(history) {
   if (!history.length) return 1;
   let last = history[history.length - 1];
@@ -190,22 +191,28 @@ function getStreak(history) {
   }
   return streak;
 }
-function updateDepth(playerStreak, aiStreak) {
-  // Depth increases with the max streak of both sides, up to MAX_DEPTH, but decays if both break their streaks.
-  let newDepth = Math.max(1, Math.min(MAX_DEPTH, Math.max(playerStreak, aiStreak)));
-  // Optionally: decay if both streaks are 1.
-  if (playerStreak === 1 && aiStreak === 1) newDepth = Math.max(1, depth - 1);
-  depth = newDepth;
-  renderDepth();
+function updateDepth(lastPlayer, lastAI, currPlayer, currAI) {
+  let increased = false;
+  // If either player repeats their last move, depth creeps up
+  if ((lastPlayer && lastPlayer === currPlayer) || (lastAI && lastAI === currAI)) {
+    if (depth < MAX_DEPTH) {
+      depth++;
+      increased = true;
+    }
+  } else {
+    // If both sides break streak, depth decays
+    if (depth > 1) depth--;
+  }
+  renderDepth(increased);
 }
-function voidChance(streak, depth) {
+function voidChance(streak, depth, heat) {
   if (streak <= 1) return 0;
-  // Example: 5% per repeat * depth
-  let base = 0.06 * (streak - 1) * depth;
-  return Math.min(base, 0.65); // Max 65% chance, tweak as needed
+  // Steeper at higher heat, and with higher depth
+  let base = 0.04;
+  let chance = base * (streak - 1) * (1 + heat/7) * (depth/MAX_DEPTH);
+  return Math.min(chance, 0.75); // cap at 75%
 }
-function renderDepth() {
-  // Draw a bar of ░ and ▓ up to MAX_DEPTH
+function renderDepth(increased = false) {
   let bar = '';
   for (let i = 1; i <= MAX_DEPTH; i++) {
     bar += i <= depth ? '▓' : '░';
@@ -232,7 +239,7 @@ function renderMoveButtons() {
 // --- LOGGING --- //
 function log(t) { logBox.innerHTML = `<p>> ${t}</p>` + logBox.innerHTML; }
 
-// --- AI (copied from original, with heat scaling) --- //
+// --- AI (with heat scaling) --- //
 function predictPlayerMove(history, availMoves, heat=1) {
   if (!history.length) return pickRandomMove(availMoves);
   if (heat >= 7 && history.length >= 2) {
@@ -375,9 +382,8 @@ function play(playerChoice){
   if(over) return;
   let availMoves = getAvailableMoves().map(m=>m.code);
 
-  // --- DEPTH SYSTEM: get current streaks ---
-  let playerStreak = getStreak(playerHistory.concat([playerChoice]));
-  let aiStreak = getStreak(aiHistory);
+  let lastPlayer = playerHistory.length > 0 ? playerHistory[playerHistory.length-1] : null;
+  let lastAI = aiHistory.length > 0 ? aiHistory[aiHistory.length-1] : null;
 
   // --- AI picks its move (before void) ---
   const aiInitial = heatEngine(
@@ -391,26 +397,29 @@ function play(playerChoice){
       foe
     }
   );
-  // Simulate AI history if needed
-  let aiStreakNext = aiStreak;
-  if (aiHistory.length > 0 && aiInitial === aiHistory[aiHistory.length - 1]) {
-    aiStreakNext = aiStreak + 1;
-  } else {
-    aiStreakNext = 1;
-  }
 
-  // --- Update depth based on new streaks ---
-  updateDepth(playerStreak, aiStreakNext);
+  // --- Depth update --- //
+  updateDepth(lastPlayer, lastAI, playerChoice, aiInitial);
+
+  // --- Streaks for void calculation --- //
+  let playerStreak = 1;
+  if (lastPlayer && lastPlayer === playerChoice) {
+    playerStreak = getStreak(playerHistory.concat([playerChoice]));
+  }
+  let aiStreak = 1;
+  if (lastAI && lastAI === aiInitial) {
+    aiStreak = getStreak(aiHistory.concat([aiInitial]));
+  }
 
   // --- VOID CHECKS ---
   let playerMiss = false, aiMiss = false, voidLog = '';
-  // Player void chance based on their new streak & current depth
-  if (Math.random() < voidChance(playerStreak, depth)) {
+  // Player void chance based on their new streak & current depth & heat
+  if (Math.random() < voidChance(playerStreak, depth, heat)) {
     playerMiss = true;
     voidLog += `Your move was claimed by the void! `;
   }
-  // AI void chance based on its next streak & current depth
-  if (Math.random() < voidChance(aiStreakNext, depth)) {
+  // AI void chance based on its new streak & current depth & heat
+  if (Math.random() < voidChance(aiStreak, depth, heat)) {
     aiMiss = true;
     voidLog += `Enemy suffers an unfortunate misstep. `;
   }
