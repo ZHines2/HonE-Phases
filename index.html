@@ -2,65 +2,105 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>BLACK / WHITE – Advantage Game</title>
+  <title>Heaven on Earth: PHASES</title>
   <style>
-    body  { background:#111; color:#eee; font-family:monospace; text-align:center; padding:40px; transition: 0.2s; }
-    button{ font-size:1.3em; margin:8px; padding:8px 22px; cursor:pointer; }
-    #log  { margin-top:20px; height:160px; overflow-y:auto; background:#222;
-            padding:8px; border:1px solid #555; text-align:left; }
-    .score{ margin-top:16px; font-size:1.2em; }
-    #rope { letter-spacing:1px; margin-top:10px; }
-    #stats{ margin-top:22px; color:#bbb; font-size:1em; }
-    #depth { margin-top:10px; }
-    .shake1 { animation: shake1 0.2s; }
-    .shake2 { animation: shake2 0.28s; }
-    .shake3 { animation: shake3 0.4s; }
-    @keyframes shake1 {
-      0% {transform: translateX(0);}
-      25%{transform: translateX(-8px);}
-      50%{transform: translateX(8px);}
-      75%{transform: translateX(-4px);}
-      100%{transform: translateX(0);}
+    body  {
+      background: #111;
+      color: #eee;
+      font-family: monospace;
+      text-align: center;
+      padding: 40px 0 48px 0;
+      margin: 0;
+      transition: 0.2s;
     }
-    @keyframes shake2 {
-      0% {transform: translateX(0);}
-      10%{transform: translateX(-14px);}
-      30%{transform: translateX(14px);}
-      50%{transform: translateX(-10px);}
-      70%{transform: translateX(10px);}
-      90%{transform: translateX(-6px);}
-      100%{transform: translateX(0);}
+    h1 {
+      margin-bottom: 8px;
+      font-size: 2.1em;
+      letter-spacing: 1px;
+      text-shadow: 0 2px 8px #0008;
     }
-    @keyframes shake3 {
-      0% {transform: translateX(0);}
-      8%{transform: translateX(-22px);}
-      20%{transform: translateX(22px);}
-      34%{transform: translateX(-20px);}
-      47%{transform: translateX(20px);}
-      65%{transform: translateX(-14px);}
-      78%{transform: translateX(14px);}
-      100%{transform: translateX(0);}
+    button {
+      font-size: 1.26em;
+      margin: 8px 14px 12px 14px;
+      padding: 9px 32px;
+      cursor: pointer;
+      border-radius: 7px;
+      background: #222;
+      color: #eee;
+      border: 1.3px solid #444;
+      outline: none;
+      box-shadow: 0 2px 10px #0004;
+      transition: background 0.15s, color 0.13s, box-shadow 0.19s;
     }
-    #achievementsModal {
-      display:none; position:fixed; left:0; top:0; width:100vw; height:100vh;
-      background:rgba(20,20,20,0.94); color:#fff; z-index:10; 
-      text-align:center; font-size:1.3em; padding-top:6vh;
+    button:hover:enabled {
+      background: #393952;
+      color: #ffe;
+      border-color: #aaa;
+      box-shadow: 0 4px 16px #0008;
     }
-    #achievementsContent {
-      display:inline-block; background:#222; padding:32px 48px; border-radius:18px;
-      box-shadow:0 0 40px #000; text-align:left; font-size:1.1em;
+    button:disabled {
+      opacity: 0.38;
     }
-    #achievementsContent h2 { margin-top:0; }
-    #achievementsList div { margin: 8px 0; }
+    #log {
+      margin: 22px auto 0 auto;
+      height: 160px;
+      max-width: 486px;
+      overflow-y: auto;
+      background: #1a1a1f;
+      padding: 13px 11px 12px 17px;
+      border: 1.5px solid #444;
+      text-align: left;
+      font-size: 1.06em;
+      border-radius: 8px;
+      box-shadow: 0 6px 28px #000b;
+      scrollbar-width: thin;
+      scrollbar-color: #333 #18181b;
+    }
+    #log p {
+      margin: 0 0 4px 0;
+      padding: 0;
+      line-height: 1.36;
+      font-family: inherit;
+      word-break: break-all;
+    }
+    .score {
+      margin-top: 16px;
+      font-size: 1.22em;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+    #rope {
+      letter-spacing: 1px;
+      margin-top: 10px;
+      font-size: 1.3em;
+      color: #b9d0ff;
+      text-shadow: 0 2px 8px #0033  ;
+    }
+    #stats {
+      margin-top: 25px;
+      color: #bbb;
+      font-size: 1.04em;
+      max-width: 640px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.3;
+    }
+    #depth {
+      margin-top: 10px;
+      display: inline-block;
+    }
     #depthBar {
-      display:inline-block;
-      background:#333;
-      border-radius:6px;
-      padding:2px 12px;
-      font-size:1.08em;
-      margin-left:18px;
-      letter-spacing:2px;
-      border:1px solid #555;
+      display: inline-block;
+      background: #232334;
+      border-radius: 7px;
+      padding: 3px 15px;
+      font-size: 1.05em;
+      margin-left: 18px;
+      letter-spacing: 2px;
+      border: 1.2px solid #434367;
+      color: #aad;
+      box-shadow: 0 1px 8px #0006;
+      font-weight: bold;
     }
     .void-flash {
       animation: voidFlash 0.7s;
@@ -68,8 +108,53 @@
     @keyframes voidFlash {
       0% { background: #333; color: #eee; }
       40% { background: #990000; color: #fff; }
-      70% { background: #333; color: #eee; }
-      100% { background: #333; color: #eee; }
+      70% { background: #232334; color: #aad; }
+      100% { background: #232334; color: #aad; }
+    }
+    #chaos {
+      margin-left: 18px;
+      color: #ffb94c;
+      font-weight: bold;
+      text-shadow: 0 2px 8px #000a;
+      letter-spacing: 2px;
+    }
+    #achievementsModal {
+      display: none;
+      position: fixed;
+      left: 0; top: 0; width: 100vw; height: 100vh;
+      background: rgba(20,20,24,0.96);
+      color: #fff;
+      z-index: 10;
+      text-align: center;
+      font-size: 1.22em;
+      padding-top: 6vh;
+      transition: background 0.23s;
+    }
+    #achievementsContent {
+      display: inline-block;
+      background: #232334;
+      padding: 36px 60px 28px 60px;
+      border-radius: 22px;
+      box-shadow: 0 0 56px #000c, 0 2px 24px #0008;
+      text-align: left;
+      font-size: 1.09em;
+      border: 1.5px solid #444;
+      min-width: 300px;
+      max-width: 80vw;
+      margin-top: 22px;
+    }
+    #achievementsContent h2 {
+      margin-top: 0;
+      letter-spacing: 1.7px;
+      font-size: 1.19em;
+      text-align: center;
+      color: #ffe099;
+      text-shadow: 0 1px 9px #000d;
+    }
+    #achievementsList div {
+      margin: 9px 0;
+      font-size: 1.04em;
+      letter-spacing: 1px;
     }
   </style>
 </head>
@@ -81,6 +166,7 @@
   <div>
     <span id="heat"></span>
     <span id="depth"></span>
+    <span id="chaos"></span>
   </div>
   <div id="log"></div>
   <div id="stats"></div>
@@ -93,43 +179,37 @@
     </div>
   </div>
 <script>
-// --- CONFIG --- //
+/* --- CONFIG --- */
 const moves = [
   {code:'B', label:'BLACK', emoji:'🖤', hotkey:'ShiftLeft', unlockHeat:1},
   {code:'W', label:'WHITE', emoji:'🤍', hotkey:'ShiftRight', unlockHeat:1},
   {code:'G', label:'GREY',  emoji:'⬜',  hotkey:'Space',     unlockHeat:4}
 ];
-// Payoff table does NOT include 'null' (void) moves, handled in code logic!
 const payoffTable = {
   'B': {'B':[1,1],   'W':[0,1],   'G':[1,0]},
   'W': {'B':[1,0],   'W':[-1,-1], 'G':[0,-1]},
   'G': {'B':[0,1],   'W':[-1,0],  'G':[0,0]}
 };
-const moveName = code => {
-  const m = moves.find(m=>m.code===code);
-  return m ? m.label : code;
-};
-const moveEmoji = code => {
-  const m = moves.find(m=>m.code===code);
-  return m ? m.emoji : code;
-};
+const moveName = code => moves.find(m=>m.code===code)?.label || code;
+const moveEmoji = code => moves.find(m=>m.code===code)?.emoji || code;
 
-// --- STATE --- //
-let you=0, foe=0, over=false, heat=1, xCount = 0, xTimeout = null;
-let playerHistory = [];
-let aiHistory = [];
-let depth = 1; // Depth starts shallow
+/* --- STATE --- */
+let you=0, foe=0, over=false, heat=1, xCount=0, xTimeout=null;
+let playerHistory=[], aiHistory=[];
+let depth = 1, chaos = 0;
+let greyUnlockedAnnounced = false, chaosUnlockedAnnounced = false;
 const MAX_DEPTH = 33;
-const logBox=document.getElementById('log');
-const advBox=document.getElementById('adv');
-const rope=document.getElementById('rope');
-const statsBox=document.getElementById('stats');
-const moveBtns=document.getElementById('moveBtns');
+const logBox = document.getElementById('log');
+const advBox = document.getElementById('adv');
+const rope = document.getElementById('rope');
+const statsBox = document.getElementById('stats');
+const moveBtns = document.getElementById('moveBtns');
 const body = document.body;
 const heatBox = document.getElementById('heat');
 const depthBox = document.getElementById('depth');
+const chaosBox = document.getElementById('chaos');
 
-// --- PERSISTENT STATS --- //
+/* --- PERSISTENT STATS --- */
 const STATS_KEY = "bw_adv_stats_v2";
 function getStats() {
   let s = {};
@@ -140,11 +220,12 @@ function saveStats(s) { localStorage.setItem(STATS_KEY, JSON.stringify(s)); }
 function showStats(msg){
   const s = getStats();
   let keytips = moves.map(m => `${m.emoji}=${m.hotkey.replace('Shift','⇧').replace('Key','')}`).join(', ');
-  statsBox.innerText = `WINS: ${s.wins}   LOSSES: ${s.losses}   GAMES: ${s.games}   [R=restart, X 3×=erase stats, S=Achievements, ${keytips}]`
+  statsBox.innerText =
+    `WINS: ${s.wins}   LOSSES: ${s.losses}   GAMES: ${s.games}   [R=restart, X 3×=erase stats, S=Achievements, ${keytips}]`
     + (msg ? `\n${msg}` : '');
 }
 
-// --- ACHIEVEMENTS --- //
+/* --- ACHIEVEMENTS --- */
 function getAchievements(){
   const s = getStats();
   return [
@@ -169,22 +250,29 @@ function showAchievementsModal(show){
   }
 }
 
-// --- HEAT / PHASE DISPLAY --- //
+/* --- HEAT / PHASE DISPLAY --- */
 function setHeat(h) {
   heat = Math.max(1, h);
+  if (heat >= 4 && !greyUnlockedAnnounced) {
+    log(`<span style="color:#f8d95c">⬜ GREY unlocked!</span>`);
+    greyUnlockedAnnounced = true;
+  }
+  if (heat >= 5 && !chaosUnlockedAnnounced) {
+    log(`<span style="color:#fa5">⚡ CHAOS unlocked!</span>`);
+    chaosUnlockedAnnounced = true;
+  }
   let s = getStats();
   if (heat > s.maxHeat) { s.maxHeat = heat; saveStats(s); }
-  heatBox.innerText = `HEAT: ${heat}${heat>=4?' (GREY unlocked!)':''}`;
+  heatBox.innerText = `HEAT: ${heat}`;
+  updateChaosDisplay();
 }
 function incHeat() { setHeat(heat+1); }
 function resetHeat() { setHeat(1); }
 
-// --- DEPTH SYSTEM --- //
-// Incremental, "creeping" depth, steepens at high heat
+/* --- DEPTH SYSTEM --- */
 function getStreak(history) {
   if (!history.length) return 1;
-  let last = history[history.length - 1];
-  let streak = 1;
+  let last = history[history.length - 1], streak = 1;
   for (let i = history.length - 2; i >= 0; i--) {
     if (history[i] === last) streak++;
     else break;
@@ -193,34 +281,36 @@ function getStreak(history) {
 }
 function updateDepth(lastPlayer, lastAI, currPlayer, currAI) {
   let increased = false;
-  // If either player repeats their last move, depth creeps up
   if ((lastPlayer && lastPlayer === currPlayer) || (lastAI && lastAI === currAI)) {
-    if (depth < MAX_DEPTH) {
-      depth++;
-      increased = true;
-    }
-  } else {
-    // If both sides break streak, depth decays
-    if (depth > 1) depth--;
-  }
+    if (depth < MAX_DEPTH) { depth++; increased = true; }
+  } else if (depth > 1) depth--;
   renderDepth(increased);
 }
 function voidChance(streak, depth, heat) {
   if (streak <= 1) return 0;
-  // Steeper at higher heat, and with higher depth
   let base = 0.04;
   let chance = base * (streak - 1) * (1 + heat/7) * (depth/MAX_DEPTH);
-  return Math.min(chance, 0.90); // cap at 90%
+  return Math.min(chance, 0.90);
 }
 function renderDepth(increased = false) {
   let bar = '';
-  for (let i = 1; i <= MAX_DEPTH; i++) {
-    bar += i <= depth ? '▓' : '░';
-  }
+  for (let i = 1; i <= MAX_DEPTH; i++) { bar += i <= depth ? '▓' : '░'; }
   depthBox.innerHTML = `<span id="depthBar"${depth>=MAX_DEPTH-1?' class="void-flash"':''}>DEPTH: ${bar} (${depth})</span>`;
 }
 
-// --- MOVE BUTTONS --- //
+/* --- CHAOS SYSTEM --- */
+function updateChaosDisplay() {
+  if (heat >= 5) chaosBox.innerText = `CHAOS: ${chaos}`;
+  else chaosBox.innerText = "";
+}
+function flipMove(move) {
+  if(move === 'B') return 'W';
+  if(move === 'W') return 'B';
+  if(move === 'G') return null;
+  return move;
+}
+
+/* --- MOVE BUTTONS --- */
 function getAvailableMoves() {
   return moves.filter(m => heat >= m.unlockHeat);
 }
@@ -236,10 +326,10 @@ function renderMoveButtons() {
   });
 }
 
-// --- LOGGING --- //
+/* --- LOGGING --- */
 function log(t) { logBox.innerHTML = `<p>> ${t}</p>` + logBox.innerHTML; }
 
-// --- AI (with heat scaling) --- //
+/* --- AI (with heat scaling) --- */
 function predictPlayerMove(history, availMoves, heat=1) {
   if (!history.length) return pickRandomMove(availMoves);
   if (heat >= 7 && history.length >= 2) {
@@ -251,27 +341,21 @@ function predictPlayerMove(history, availMoves, heat=1) {
       let pair = history[i - 1] + history[i];
       if (transitions[pair] !== undefined) transitions[pair]++;
     }
-    let last = history[history.length - 1];
-    let bestMove = availMoves[0], bestCount = -1;
+    let last = history[history.length - 1], bestMove = availMoves[0], bestCount = -1;
     availMoves.forEach(m => {
       let count = transitions[last + m];
-      if (count > bestCount) {
-        bestMove = m;
-        bestCount = count;
-      }
+      if (count > bestCount) { bestMove = m; bestCount = count; }
     });
     return bestMove;
   }
   if (heat >= 5) {
-    let last = history[history.length-1];
-    let streak = 1;
+    let last = history[history.length-1], streak = 1;
     for (let i=history.length-2; i>=0; i--) {
-      if (history[i] === last) streak++;
-      else break;
+      if (history[i] === last) streak++; else break;
     }
     return streak >= 2 ? last : pickRandomMove(availMoves);
   }
-  return history[history.length - 1];
+  return history[history.length-1];
 }
 function pickRandomMove(availMoves) {
   return availMoves[Math.floor(Math.random() * availMoves.length)];
@@ -280,39 +364,27 @@ function aiWeightedRandom(availMoves, history) {
   let counts = availMoves.map(m => history.filter(x => x === m).length);
   let minCount = Math.min(...counts);
   let leastUsed = availMoves.filter((m, i) => counts[i] === minCount);
-  return Math.random() < 0.7
-    ? pickRandomMove(leastUsed)
-    : pickRandomMove(availMoves);
+  return Math.random() < 0.7 ? pickRandomMove(leastUsed) : pickRandomMove(availMoves);
 }
 function aiGoalAware(availMoves, playerMove, payoffTable, you, foe) {
-  // 1. If AI can win now, do it!
   for (let aiMove of availMoves) {
     let [playerDelta, aiDelta] = payoffTable[playerMove][aiMove];
-    if ((foe + aiDelta) - (you + playerDelta) >= 3) {
-      return aiMove;
-    }
+    if ((foe + aiDelta) - (you + playerDelta) >= 3) return aiMove;
   }
-  // 2. If player can win next, block if possible
   let blockMoves = [];
   for (let aiMove of availMoves) {
     let [playerDelta, aiDelta] = payoffTable[playerMove][aiMove];
-    if ((you + playerDelta) - (foe + aiDelta) < 3) {
-      blockMoves.push(aiMove);
-    }
+    if ((you + playerDelta) - (foe + aiDelta) < 3) blockMoves.push(aiMove);
   }
   if (blockMoves.length) {
     let bestMove = blockMoves[0], bestScore = -Infinity;
     for (let aiMove of blockMoves) {
       let [playerDelta, aiDelta] = payoffTable[playerMove][aiMove];
       let score = aiDelta * 10 - playerDelta;
-      if (score > bestScore) {
-        bestMove = aiMove;
-        bestScore = score;
-      }
+      if (score > bestScore) { bestMove = aiMove; bestScore = score; }
     }
     return bestMove;
   }
-  // 3. Otherwise, maximize outcome as usual
   return aiStrategic(availMoves, playerMove, payoffTable);
 }
 function aiStrategic(availMoves, playerMove, payoffTable) {
@@ -321,10 +393,7 @@ function aiStrategic(availMoves, playerMove, payoffTable) {
     if (!payoffTable[playerMove] || !payoffTable[playerMove][aiMove]) continue;
     let [playerDelta, aiDelta] = payoffTable[playerMove][aiMove];
     let score = aiDelta * 10 - playerDelta;
-    if (score > bestScore) {
-      bestMove = aiMove;
-      bestScore = score;
-    }
+    if (score > bestScore) { bestMove = aiMove; bestScore = score; }
   }
   return bestMove;
 }
@@ -333,39 +402,30 @@ function heatEngine(heat, availMoves, {playerHistory=[], payoffTable, playerMove
     return aiGoalAware(availMoves, playerMove, payoffTable, you, foe);
   }
   let predicted = predictPlayerMove(playerHistory, availMoves, heat);
-  if (heat >= 5 && payoffTable) {
-    return aiGoalAware(availMoves, predicted, payoffTable, you, foe);
-  }
-  if (heat >= 3) {
-    return aiWeightedRandom(availMoves, playerHistory);
-  }
+  if (heat >= 5 && payoffTable) return aiGoalAware(availMoves, predicted, payoffTable, you, foe);
+  if (heat >= 3) return aiWeightedRandom(availMoves, playerHistory);
   return pickRandomMove(availMoves);
 }
 
-// --- PAYOFF LOGIC WITH VOID (NULL) HANDLING --- //
+/* --- PAYOFF LOGIC WITH VOID (NULL) HANDLING --- */
 function getPayoff(yourMove, foeMove) {
-  // Both null (should never happen): nothing
   if (!yourMove && !foeMove) return [0,0];
-  // You miss
   if (!yourMove) {
-    // Opponent's move still resolves:
     if (foeMove === 'B') return [0,1];
     if (foeMove === 'W') return [0,-1];
     if (foeMove === 'G') return [0,0];
     return [0,0];
   }
-  // Opponent misses
   if (!foeMove) {
     if (yourMove === 'B') return [1,0];
     if (yourMove === 'W') return [-1,0];
     if (yourMove === 'G') return [0,0];
     return [0,0];
   }
-  // Both normal
   return payoffTable[yourMove][foeMove] || [0,0];
 }
 
-// --- MAIN GAME LOOP --- //
+/* --- MAIN GAME LOOP --- */
 function update(msg){
   const adv=you-foe;
   advBox.innerText = `Advantage: ${adv>0 ? '+'+adv : adv}`;
@@ -376,8 +436,8 @@ function update(msg){
   showStats(msg);
   renderMoveButtons();
   renderDepth();
+  updateChaosDisplay();
 }
-
 function play(playerChoice){
   if(over) return;
   let availMoves = getAvailableMoves().map(m=>m.code);
@@ -385,62 +445,71 @@ function play(playerChoice){
   let lastPlayer = playerHistory.length > 0 ? playerHistory[playerHistory.length-1] : null;
   let lastAI = aiHistory.length > 0 ? aiHistory[aiHistory.length-1] : null;
 
-  // --- AI picks its move (before void) ---
-  const aiInitial = heatEngine(
-    heat,
-    availMoves,
-    {
-      playerHistory,
-      payoffTable,
-      playerMove: playerChoice,
-      you,
-      foe
+  // --- CHAOS: Only update and flip if heat >= 5 ---
+  let playerFlipped = playerChoice;
+  let aiFlipped;
+  let logChaos = "";
+
+  if (heat >= 5) {
+    if(lastPlayer && playerChoice && lastPlayer !== playerChoice) chaos++;
+    if(lastAI && typeof lastAI === "string" && aiHistory.length>0 && lastAI !== aiHistory[aiHistory.length-2]) chaos++;
+    if(chaos > 0) chaos--;
+    updateChaosDisplay();
+
+    aiFlipped = heatEngine(heat, availMoves, {
+      playerHistory, payoffTable, playerMove: playerChoice, you, foe
+    });
+
+    const chaosChance = Math.min(chaos * 0.04, 0.50);
+    if(playerChoice && Math.random() < chaosChance) {
+      playerFlipped = flipMove(playerChoice);
+      logChaos += `<span style="color:#fa5">CHAOS flips your move!</span> `;
     }
-  );
+    if(aiFlipped && Math.random() < chaosChance) {
+      aiFlipped = flipMove(aiFlipped);
+      logChaos += `<span style="color:#fa5">CHAOS flips the enemy move!</span> `;
+    }
+  } else {
+    updateChaosDisplay();
+    aiFlipped = heatEngine(heat, availMoves, {
+      playerHistory, payoffTable, playerMove: playerChoice, you, foe
+    });
+  }
 
-  // --- Depth update --- //
-  updateDepth(lastPlayer, lastAI, playerChoice, aiInitial);
+  updateDepth(lastPlayer, lastAI, playerFlipped, aiFlipped);
 
-  // --- Streaks for void calculation --- //
   let playerStreak = 1;
-  if (lastPlayer && lastPlayer === playerChoice) {
-    playerStreak = getStreak(playerHistory.concat([playerChoice]));
-  }
+  if (lastPlayer && lastPlayer === playerFlipped)
+    playerStreak = getStreak(playerHistory.concat([playerFlipped]));
   let aiStreak = 1;
-  if (lastAI && lastAI === aiInitial) {
-    aiStreak = getStreak(aiHistory.concat([aiInitial]));
-  }
+  if (lastAI && lastAI === aiFlipped)
+    aiStreak = getStreak(aiHistory.concat([aiFlipped]));
 
-  // --- VOID CHECKS ---
   let playerMiss = false, aiMiss = false, voidLog = '';
-  // Player void chance based on their new streak & current depth & heat
   if (Math.random() < voidChance(playerStreak, depth, heat)) {
     playerMiss = true;
     voidLog += `Your move was claimed by the void! `;
   }
-  // AI void chance based on its new streak & current depth & heat
   if (Math.random() < voidChance(aiStreak, depth, heat)) {
     aiMiss = true;
     voidLog += `Enemy suffers an unfortunate misstep. `;
   }
 
-  let playerFinal = playerMiss ? null : playerChoice;
-  let aiFinal = aiMiss ? null : aiInitial;
+  let playerFinal = playerMiss ? null : playerFlipped;
+  let aiFinal = aiMiss ? null : aiFlipped;
 
-  // --- Logging ---
   let desc = `You ➜ ${playerFinal ? moveEmoji(playerFinal) + ' ' + moveName(playerFinal) : '∅ VOID'}   |   Enemy ➜ ${aiFinal ? moveEmoji(aiFinal) + ' ' + moveName(aiFinal) : '∅ VOID'}`;
   log(desc);
+  if (logChaos) log(logChaos);
   if (voidLog) {
     log(`<span style="color:#ff8484">${voidLog.trim()}</span>`);
     depthBox.classList.add('void-flash');
     setTimeout(()=>depthBox.classList.remove('void-flash'), 800);
   }
 
-  // --- PAYOFF ---
   const [dYou, dFoe] = getPayoff(playerFinal, aiFinal);
   you += dYou; foe += dFoe;
 
-  // --- Outcome message ---
   let roundMsg = '';
   if (dYou > 0 && dFoe > 0) roundMsg = 'Both gain.';
   else if (dYou > 0) roundMsg = 'You gain.';
@@ -448,12 +517,10 @@ function play(playerChoice){
   else if (dYou < 0 && dFoe < 0) roundMsg = 'Stalemate – both lose.';
   else if (dYou < 0) roundMsg = 'You lose.';
   else if (dFoe < 0) roundMsg = 'Enemy loses.';
-  else roundMsg = '';
   if (roundMsg) log(roundMsg);
 
-  // --- History update ---
   playerHistory.push(playerChoice);
-  aiHistory.push(aiInitial);
+  aiHistory.push(aiFlipped);
 
   update();
   if(Math.abs(you-foe)>=3) end();
@@ -475,13 +542,14 @@ function end(){
 }
 function resetGame(){
   you=0; foe=0; over=false; playerHistory=[]; aiHistory=[];
-  depth=1;
+  depth=1; chaos=0;
   logBox.innerHTML = '';
   document.querySelectorAll('button').forEach(b=>b.disabled=false);
+  updateChaosDisplay();
   update();
 }
 
-// --- HOTKEYS --- //
+/* --- HOTKEYS --- */
 window.addEventListener('keydown', e=>{
   if(e.key==='r'||e.key==='R'){ xCount=0; resetGame(); showAchievementsModal(false);}
   else if(e.key==='x'||e.key==='X'){
@@ -498,9 +566,15 @@ window.addEventListener('keydown', e=>{
     } else if(xCount===3){
       body.classList.add('shake3');
       localStorage.removeItem(STATS_KEY);
+      greyUnlockedAnnounced = false;
+      chaosUnlockedAnnounced = false;
+      setHeat(1);
       update("All stats erased!");
       showAchievementsModal(false);
-      setTimeout(()=>update(), 1100);
+      setTimeout(()=>{
+        resetGame();
+        update();
+      }, 1100);
       xCount=0;
     }
     xTimeout = setTimeout(()=>{ xCount=0; body.classList.remove('shake1','shake2','shake3'); update(); }, 2000);
@@ -523,7 +597,7 @@ window.addEventListener('keydown', e=>{
 });
 document.getElementById('achievementsModal').addEventListener('click', ()=>showAchievementsModal(false));
 
-// --- INIT --- //
+/* --- INIT --- */
 setHeat(getStats().maxHeat || 1);
 resetGame();
 
