@@ -119,7 +119,7 @@ let you=0, foe=0, over=false, heat=1, xCount = 0, xTimeout = null;
 let playerHistory = [];
 let aiHistory = [];
 let depth = 1; // Depth starts shallow
-const MAX_DEPTH = 20;
+const MAX_DEPTH = 33;
 const logBox=document.getElementById('log');
 const advBox=document.getElementById('adv');
 const rope=document.getElementById('rope');
@@ -210,7 +210,7 @@ function voidChance(streak, depth, heat) {
   // Steeper at higher heat, and with higher depth
   let base = 0.04;
   let chance = base * (streak - 1) * (1 + heat/7) * (depth/MAX_DEPTH);
-  return Math.min(chance, 0.75); // cap at 75%
+  return Math.min(chance, 0.90); // cap at 90%
 }
 function renderDepth(increased = false) {
   let bar = '';
@@ -350,13 +350,13 @@ function getPayoff(yourMove, foeMove) {
   if (!yourMove) {
     // Opponent's move still resolves:
     if (foeMove === 'B') return [0,1];
-    if (foeMove === 'W') return [0,0];
+    if (foeMove === 'W') return [0,-1];
     if (foeMove === 'G') return [0,0];
     return [0,0];
   }
   // Opponent misses
   if (!foeMove) {
-    if (yourMove === 'B') return [0,1];
+    if (yourMove === 'B') return [1,0];
     if (yourMove === 'W') return [-1,0];
     if (yourMove === 'G') return [0,0];
     return [0,0];
