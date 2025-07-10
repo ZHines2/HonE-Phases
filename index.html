@@ -11,6 +11,7 @@
     .score{ margin-top:16px; font-size:1.2em; }
     #rope { letter-spacing:1px; margin-top:10px; }
     #stats{ margin-top:22px; color:#bbb; font-size:1em; }
+    #depth { margin-top:10px; }
     .shake1 { animation: shake1 0.2s; }
     .shake2 { animation: shake2 0.28s; }
     .shake3 { animation: shake3 0.4s; }
@@ -51,6 +52,25 @@
     }
     #achievementsContent h2 { margin-top:0; }
     #achievementsList div { margin: 8px 0; }
+    #depthBar {
+      display:inline-block;
+      background:#333;
+      border-radius:6px;
+      padding:2px 12px;
+      font-size:1.08em;
+      margin-left:18px;
+      letter-spacing:2px;
+      border:1px solid #555;
+    }
+    .void-flash {
+      animation: voidFlash 0.7s;
+    }
+    @keyframes voidFlash {
+      0% { background: #333; color: #eee; }
+      40% { background: #990000; color: #fff; }
+      70% { background: #333; color: #eee; }
+      100% { background: #333; color: #eee; }
+    }
   </style>
 </head>
 <body>
@@ -58,7 +78,10 @@
   <div id="moveBtns"></div>
   <div class="score" id="adv"></div>
   <div id="rope"></div>
-  <div id="heat"></div>
+  <div>
+    <span id="heat"></span>
+    <span id="depth"></span>
+  </div>
   <div id="log"></div>
   <div id="stats"></div>
   <div id="achievementsModal">
@@ -70,7 +93,146 @@
     </div>
   </div>
 <script>
-// --- HEAT ENGINE AI MODULE (goal-aware, payoff-aware, scalable) --- //
+// --- CONFIG --- //
+const moves = [
+  {code:'B', label:'BLACK', emoji:'🖤', hotkey:'ShiftLeft', unlockHeat:1},
+  {code:'W', label:'WHITE', emoji:'🤍', hotkey:'ShiftRight', unlockHeat:1},
+  {code:'G', label:'GREY',  emoji:'⬜',  hotkey:'Space',     unlockHeat:4}
+];
+// Payoff table does NOT include 'null' (void) moves, handled in code logic!
+const payoffTable = {
+  'B': {'B':[1,1],   'W':[0,1],   'G':[1,0]},
+  'W': {'B':[1,0],   'W':[-1,-1], 'G':[0,-1]},
+  'G': {'B':[0,1],   'W':[-1,0],  'G':[0,0]}
+};
+const moveName = code => {
+  const m = moves.find(m=>m.code===code);
+  return m ? m.label : code;
+};
+const moveEmoji = code => {
+  const m = moves.find(m=>m.code===code);
+  return m ? m.emoji : code;
+};
+
+// --- STATE --- //
+let you=0, foe=0, over=false, heat=1, xCount = 0, xTimeout = null;
+let playerHistory = [];
+let aiHistory = [];
+let depth = 1; // Depth starts shallow
+const MAX_DEPTH = 8;
+const logBox=document.getElementById('log');
+const advBox=document.getElementById('adv');
+const rope=document.getElementById('rope');
+const statsBox=document.getElementById('stats');
+const moveBtns=document.getElementById('moveBtns');
+const body = document.body;
+const heatBox = document.getElementById('heat');
+const depthBox = document.getElementById('depth');
+
+// --- PERSISTENT STATS --- //
+const STATS_KEY = "bw_adv_stats_v2";
+function getStats() {
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(STATS_KEY))||{}; } catch(e){ s={}; }
+  return Object.assign({wins:0,losses:0,games:0,maxHeat:1}, s);
+}
+function saveStats(s) { localStorage.setItem(STATS_KEY, JSON.stringify(s)); }
+function showStats(msg){
+  const s = getStats();
+  let keytips = moves.map(m => `${m.emoji}=${m.hotkey.replace('Shift','⇧').replace('Key','')}`).join(', ');
+  statsBox.innerText = `WINS: ${s.wins}   LOSSES: ${s.losses}   GAMES: ${s.games}   [R=restart, X 3×=erase stats, S=Achievements, ${keytips}]`
+    + (msg ? `\n${msg}` : '');
+}
+
+// --- ACHIEVEMENTS --- //
+function getAchievements(){
+  const s = getStats();
+  return [
+    {label:"First Win",      unlocked: s.wins > 0},
+    {label:"First Loss",     unlocked: s.losses > 0},
+    {label:"5 Games Played", unlocked: s.games >= 5},
+    {label:"10 Wins",        unlocked: s.wins >= 10},
+    {label:"Win/Loss > 2",   unlocked: (s.wins>0 && s.losses>0 && s.wins/s.losses > 2)},
+    {label:"20 Games Played",unlocked: s.games >= 20},
+    {label:"Max Heat ≥ 4",   unlocked: s.maxHeat >= 4}
+  ];
+}
+function showAchievementsModal(show){
+  const modal = document.getElementById('achievementsModal');
+  if(show){
+    const ach = getAchievements();
+    document.getElementById('achievementsList').innerHTML =
+      ach.map(a=>`${a.unlocked?"✅":"⬜"} ${a.label}`).join('<br>');
+    modal.style.display = "block";
+  }else{
+    modal.style.display = "none";
+  }
+}
+
+// --- HEAT / PHASE DISPLAY --- //
+function setHeat(h) {
+  heat = Math.max(1, h);
+  let s = getStats();
+  if (heat > s.maxHeat) { s.maxHeat = heat; saveStats(s); }
+  heatBox.innerText = `HEAT: ${heat}${heat>=4?' (GREY unlocked!)':''}`;
+}
+function incHeat() { setHeat(heat+1); }
+function resetHeat() { setHeat(1); }
+
+// --- DEPTH SYSTEM --- //
+function getStreak(history) {
+  if (!history.length) return 1;
+  let last = history[history.length - 1];
+  let streak = 1;
+  for (let i = history.length - 2; i >= 0; i--) {
+    if (history[i] === last) streak++;
+    else break;
+  }
+  return streak;
+}
+function updateDepth(playerStreak, aiStreak) {
+  // Depth increases with the max streak of both sides, up to MAX_DEPTH, but decays if both break their streaks.
+  let newDepth = Math.max(1, Math.min(MAX_DEPTH, Math.max(playerStreak, aiStreak)));
+  // Optionally: decay if both streaks are 1.
+  if (playerStreak === 1 && aiStreak === 1) newDepth = Math.max(1, depth - 1);
+  depth = newDepth;
+  renderDepth();
+}
+function voidChance(streak, depth) {
+  if (streak <= 1) return 0;
+  // Example: 5% per repeat * depth
+  let base = 0.06 * (streak - 1) * depth;
+  return Math.min(base, 0.65); // Max 65% chance, tweak as needed
+}
+function renderDepth() {
+  // Draw a bar of ░ and ▓ up to MAX_DEPTH
+  let bar = '';
+  for (let i = 1; i <= MAX_DEPTH; i++) {
+    bar += i <= depth ? '▓' : '░';
+  }
+  depthBox.innerHTML = `<span id="depthBar"${depth>=MAX_DEPTH-1?' class="void-flash"':''}>DEPTH: ${bar} (${depth})</span>`;
+}
+
+// --- MOVE BUTTONS --- //
+function getAvailableMoves() {
+  return moves.filter(m => heat >= m.unlockHeat);
+}
+function renderMoveButtons() {
+  moveBtns.innerHTML = '';
+  getAvailableMoves().forEach(m => {
+    const btn = document.createElement('button');
+    btn.innerHTML = `${m.emoji} ${m.label}`;
+    btn.onclick = ()=>play(m.code);
+    btn.id = `btn_${m.code}`;
+    btn.disabled = over;
+    moveBtns.appendChild(btn);
+  });
+}
+
+// --- LOGGING --- //
+function log(t) { logBox.innerHTML = `<p>> ${t}</p>` + logBox.innerHTML; }
+
+// --- AI (copied from original, with heat scaling) --- //
 function predictPlayerMove(history, availMoves, heat=1) {
   if (!history.length) return pickRandomMove(availMoves);
   if (heat >= 7 && history.length >= 2) {
@@ -172,101 +334,30 @@ function heatEngine(heat, availMoves, {playerHistory=[], payoffTable, playerMove
   }
   return pickRandomMove(availMoves);
 }
-// --- END HEAT ENGINE AI MODULE --- //
 
-// --- GAME CONFIG --- //
-const moves = [
-  {code:'B', label:'BLACK', emoji:'🖤', hotkey:'ShiftLeft', unlockHeat:1},
-  {code:'W', label:'WHITE', emoji:'🤍', hotkey:'ShiftRight', unlockHeat:1},
-  {code:'G', label:'GREY',  emoji:'⬜',  hotkey:'Space',     unlockHeat:4}
-];
-const payoffTable = {
-  'B': {'B':[1,1],   'W':[0,1],   'G':[1,0]},
-  'W': {'B':[1,0],   'W':[-1,-1], 'G':[0,-1]},
-  'G': {'B':[0,1],   'W':[-1,0],  'G':[0,0]}
-};
-const moveName = code => {
-  const m = moves.find(m=>m.code===code);
-  return m ? m.label : code;
-};
-const moveEmoji = code => {
-  const m = moves.find(m=>m.code===code);
-  return m ? m.emoji : code;
-};
-// --- STATE --- //
-let you=0, foe=0, over=false, heat=1, xCount = 0, xTimeout = null;
-let playerHistory = [];
-const logBox=document.getElementById('log');
-const advBox=document.getElementById('adv');
-const rope=document.getElementById('rope');
-const statsBox=document.getElementById('stats');
-const moveBtns=document.getElementById('moveBtns');
-const body = document.body;
-const heatBox = document.getElementById('heat');
-// --- PERSISTENT STATS --- //
-const STATS_KEY = "bw_adv_stats_v2";
-function getStats() {
-  let s = {};
-  try { s = JSON.parse(localStorage.getItem(STATS_KEY))||{}; } catch(e){ s={}; }
-  return Object.assign({wins:0,losses:0,games:0,maxHeat:1}, s);
-}
-function saveStats(s) { localStorage.setItem(STATS_KEY, JSON.stringify(s)); }
-function showStats(msg){
-  const s = getStats();
-  let keytips = moves.map(m => `${m.emoji}=${m.hotkey.replace('Shift','⇧').replace('Key','')}`).join(', ');
-  statsBox.innerText = `WINS: ${s.wins}   LOSSES: ${s.losses}   GAMES: ${s.games}   [R=restart, X 3×=erase stats, S=Achievements, ${keytips}]`
-    + (msg ? `\n${msg}` : '');
-}
-// --- ACHIEVEMENTS --- //
-function getAchievements(){
-  const s = getStats();
-  return [
-    {label:"First Win",      unlocked: s.wins > 0},
-    {label:"First Loss",     unlocked: s.losses > 0},
-    {label:"5 Games Played", unlocked: s.games >= 5},
-    {label:"10 Wins",        unlocked: s.wins >= 10},
-    {label:"Win/Loss > 2",   unlocked: (s.wins>0 && s.losses>0 && s.wins/s.losses > 2)},
-    {label:"20 Games Played",unlocked: s.games >= 20},
-    {label:"Max Heat ≥ 4",   unlocked: s.maxHeat >= 4}
-  ];
-}
-function showAchievementsModal(show){
-  const modal = document.getElementById('achievementsModal');
-  if(show){
-    const ach = getAchievements();
-    document.getElementById('achievementsList').innerHTML =
-      ach.map(a=>`${a.unlocked?"✅":"⬜"} ${a.label}`).join('<br>');
-    modal.style.display = "block";
-  }else{
-    modal.style.display = "none";
+// --- PAYOFF LOGIC WITH VOID (NULL) HANDLING --- //
+function getPayoff(yourMove, foeMove) {
+  // Both null (should never happen): nothing
+  if (!yourMove && !foeMove) return [0,0];
+  // You miss
+  if (!yourMove) {
+    // Opponent's move still resolves:
+    if (foeMove === 'B') return [0,1];
+    if (foeMove === 'W') return [0,0];
+    if (foeMove === 'G') return [0,0];
+    return [0,0];
   }
+  // Opponent misses
+  if (!foeMove) {
+    if (yourMove === 'B') return [0,1];
+    if (yourMove === 'W') return [-1,0];
+    if (yourMove === 'G') return [0,0];
+    return [0,0];
+  }
+  // Both normal
+  return payoffTable[yourMove][foeMove] || [0,0];
 }
-// --- HEAT / PHASE DISPLAY --- //
-function setHeat(h) {
-  heat = Math.max(1, h);
-  let s = getStats();
-  if (heat > s.maxHeat) { s.maxHeat = heat; saveStats(s); }
-  heatBox.innerText = `HEAT: ${heat}${heat>=4?' (GREY unlocked!)':''}`;
-}
-function incHeat() { setHeat(heat+1); }
-function resetHeat() { setHeat(1); }
-// --- MOVE BUTTONS --- //
-function getAvailableMoves() {
-  return moves.filter(m => heat >= m.unlockHeat);
-}
-function renderMoveButtons() {
-  moveBtns.innerHTML = '';
-  getAvailableMoves().forEach(m => {
-    const btn = document.createElement('button');
-    btn.innerHTML = `${m.emoji} ${m.label}`;
-    btn.onclick = ()=>play(m.code);
-    btn.id = `btn_${m.code}`;
-    btn.disabled = over;
-    moveBtns.appendChild(btn);
-  });
-}
-// --- LOGGING --- //
-function log(t) { logBox.innerHTML = `<p>> ${t}</p>` + logBox.innerHTML; }
+
 // --- MAIN GAME LOOP --- //
 function update(msg){
   const adv=you-foe;
@@ -277,25 +368,70 @@ function update(msg){
   rope.innerText = cells.join(' ');
   showStats(msg);
   renderMoveButtons();
+  renderDepth();
 }
-function play(me){
+
+function play(playerChoice){
   if(over) return;
   let availMoves = getAvailableMoves().map(m=>m.code);
-  // Heat Engine AI picks
-  const opp = heatEngine(
+
+  // --- DEPTH SYSTEM: get current streaks ---
+  let playerStreak = getStreak(playerHistory.concat([playerChoice]));
+  let aiStreak = getStreak(aiHistory);
+
+  // --- AI picks its move (before void) ---
+  const aiInitial = heatEngine(
     heat,
     availMoves,
     {
       playerHistory,
       payoffTable,
-      playerMove: me, // pass actual move for possible cheater mode
+      playerMove: playerChoice,
       you,
       foe
     }
   );
-  log(`You ➜ ${moveEmoji(me)} ${moveName(me)}   |   Enemy ➜ ${moveEmoji(opp)} ${moveName(opp)}`);
-  const [dYou, dFoe] = payoffTable[me][opp] || [0,0];
+  // Simulate AI history if needed
+  let aiStreakNext = aiStreak;
+  if (aiHistory.length > 0 && aiInitial === aiHistory[aiHistory.length - 1]) {
+    aiStreakNext = aiStreak + 1;
+  } else {
+    aiStreakNext = 1;
+  }
+
+  // --- Update depth based on new streaks ---
+  updateDepth(playerStreak, aiStreakNext);
+
+  // --- VOID CHECKS ---
+  let playerMiss = false, aiMiss = false, voidLog = '';
+  // Player void chance based on their new streak & current depth
+  if (Math.random() < voidChance(playerStreak, depth)) {
+    playerMiss = true;
+    voidLog += `Your move was claimed by the void! `;
+  }
+  // AI void chance based on its next streak & current depth
+  if (Math.random() < voidChance(aiStreakNext, depth)) {
+    aiMiss = true;
+    voidLog += `Enemy suffers an unfortunate misstep. `;
+  }
+
+  let playerFinal = playerMiss ? null : playerChoice;
+  let aiFinal = aiMiss ? null : aiInitial;
+
+  // --- Logging ---
+  let desc = `You ➜ ${playerFinal ? moveEmoji(playerFinal) + ' ' + moveName(playerFinal) : '∅ VOID'}   |   Enemy ➜ ${aiFinal ? moveEmoji(aiFinal) + ' ' + moveName(aiFinal) : '∅ VOID'}`;
+  log(desc);
+  if (voidLog) {
+    log(`<span style="color:#ff8484">${voidLog.trim()}</span>`);
+    depthBox.classList.add('void-flash');
+    setTimeout(()=>depthBox.classList.remove('void-flash'), 800);
+  }
+
+  // --- PAYOFF ---
+  const [dYou, dFoe] = getPayoff(playerFinal, aiFinal);
   you += dYou; foe += dFoe;
+
+  // --- Outcome message ---
   let roundMsg = '';
   if (dYou > 0 && dFoe > 0) roundMsg = 'Both gain.';
   else if (dYou > 0) roundMsg = 'You gain.';
@@ -303,8 +439,13 @@ function play(me){
   else if (dYou < 0 && dFoe < 0) roundMsg = 'Stalemate – both lose.';
   else if (dYou < 0) roundMsg = 'You lose.';
   else if (dFoe < 0) roundMsg = 'Enemy loses.';
-  log(roundMsg);
-  playerHistory.push(me);
+  else roundMsg = '';
+  if (roundMsg) log(roundMsg);
+
+  // --- History update ---
+  playerHistory.push(playerChoice);
+  aiHistory.push(aiInitial);
+
   update();
   if(Math.abs(you-foe)>=3) end();
 }
@@ -320,14 +461,17 @@ function end(){
   showStats();
   if (win) incHeat(); else resetHeat();
   playerHistory = [];
+  aiHistory = [];
   setTimeout(() => { resetGame(); }, 1800);
 }
 function resetGame(){
-  you=0; foe=0; over=false; playerHistory=[];
+  you=0; foe=0; over=false; playerHistory=[]; aiHistory=[];
+  depth=1;
   logBox.innerHTML = '';
   document.querySelectorAll('button').forEach(b=>b.disabled=false);
   update();
 }
+
 // --- HOTKEYS --- //
 window.addEventListener('keydown', e=>{
   if(e.key==='r'||e.key==='R'){ xCount=0; resetGame(); showAchievementsModal(false);}
@@ -369,9 +513,11 @@ window.addEventListener('keydown', e=>{
   }
 });
 document.getElementById('achievementsModal').addEventListener('click', ()=>showAchievementsModal(false));
+
 // --- INIT --- //
 setHeat(getStats().maxHeat || 1);
 resetGame();
+
 </script>
 </body>
 </html>
